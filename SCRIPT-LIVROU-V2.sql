@@ -6,7 +6,7 @@ CREATE TABLE usuario (
   contato VARCHAR(255) NOT NULL,
   data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   telefone VARCHAR(20) NOT NULL,
-  email VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
   comportamento_perigoso BOOLEAN DEFAULT false NOT NULL
 );
 
@@ -25,6 +25,7 @@ CREATE TABLE livro (
   	sinopse TEXT,
   	titulo VARCHAR(255) NOT NULL
 );
+
 INSERT INTO livro (id_livro, autor, sinopse, titulo) VALUES
 (1, 'Autor 1', 'Sinopse do livro 1', 'Livro 1'),
 (2, 'Autor 2', 'Sinopse do livro 2', 'Livro 2'),
@@ -156,6 +157,20 @@ CREATE TABLE anuncios_desejados (
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 -- sempre que inserir uma curtida, deverá atualizar a quantidade de curtidas da avaliacao
 CREATE FUNCTION update_likes()
 RETURNS trigger as $$
@@ -202,7 +217,16 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trigger_verificar_curtida
     BEFORE INSERT ON curtida
     FOR EACH ROW
-    EXECUTE FUNCTION verificar_curtida();
+    EXECUTE FUNCTION verificar_curtida()
+;
+
+
+
+
+
+
+
+
 
 
 insert into curtida values (4, 1, 1);
@@ -216,6 +240,12 @@ select * from curtida;
 
 DROP FUNCTION update_likes();
 drop trigger update_curtidas on curtida;
+
+
+
+
+
+
 
 
 ----------------- QUANDO ADICIONAR NOVA WISHLIST DEVE ADICIONAR UM NOVO ITEM NO ANUNCIO DESEJADO
