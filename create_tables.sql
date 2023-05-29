@@ -6,7 +6,7 @@ CREATE TABLE usuario (
   contato VARCHAR(255) NOT NULL,
   data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   telefone VARCHAR(20) NOT NULL,
-  email VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
   comportamento_perigoso BOOLEAN DEFAULT false NOT NULL
 );
 
