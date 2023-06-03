@@ -27,6 +27,7 @@ CREATE TABLE avaliacao (
 
  	conteudo_avaliacao TEXT NOT NULL,
  	quantidade_curtidas INT DEFAULT 0,
+  	removido BOOLEAN NOT NULL DEFAULT FALSE,
 
 
  	FOREIGN KEY (id_livro) REFERENCES livro (id_livro),
