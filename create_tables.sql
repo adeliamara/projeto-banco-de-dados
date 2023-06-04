@@ -13,7 +13,6 @@ CREATE TABLE usuario (
 
 CREATE TABLE livro (
   	id_livro SERIAL PRIMARY KEY,
-  	autor VARCHAR(255) NOT NULL,
   	sinopse TEXT,
   	titulo VARCHAR(255) NOT NULL
 );
@@ -41,7 +40,7 @@ CREATE TABLE curtida (
 	id_avaliacao INT NOT NULL,
 
 
-	FOREIGN KEy (id_avaliacao) REFERENCES avaliacao(id_avaliacao),
+	FOREIGN KEY (id_avaliacao) REFERENCES avaliacao(id_avaliacao),
 	FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
 );
 
@@ -126,3 +125,17 @@ CREATE TABLE anuncios_desejados (
   	FOREIGN KEY (id_wishlist) REFERENCES wishlist (id_wishlist)
 );
 
+
+CREATE TABLE AUTOR (
+	id_autor SERIAL PRIMARY KEY,
+  	nome TEXT NOT NULL
+);
+
+CREATE TABLE AUTOR_LIVRO (
+	id_autor_livro SERIAL PRIMARY KEY,
+	id_autor INT NOT NULL,
+	id_livro INT NOT NULL,
+
+	FOREIGN KEY (id_livro) REFERENCES livro (id_livro),
+	FOREIGN KEY (id_autor) REFERENCES autor (id_autor)
+);
