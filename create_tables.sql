@@ -25,10 +25,8 @@ CREATE TABLE avaliacao (
 
 
  	conteudo TEXT NOT NULL,
- 	conteudo TEXT NOT NULL,
  	quantidade_curtidas INT DEFAULT 0,
   	removido BOOLEAN NOT NULL DEFAULT FALSE,
-	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
 
@@ -125,7 +123,7 @@ CREATE TABLE anuncios_desejados (
 
 
   	FOREIGN KEY (id_anuncio) REFERENCES anuncio (id_anuncio),
-    	FOREIGN KEY (id_wishlist) REFERENCES wishlist (id_wishlist) ON DELETE CASCADE
+    FOREIGN KEY (id_wishlist) REFERENCES wishlist (id_wishlist) ON DELETE CASCADE
 );
 
 

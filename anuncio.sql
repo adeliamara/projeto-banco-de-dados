@@ -45,23 +45,10 @@ BEGIN
         INSERT INTO local_anuncio (id_localizacao, id_anuncio)
         VALUES (v_id_localizacao, v_anuncio_id);
     END LOOP;
+
+    RAISE NOTICE 'Anúncio publicado.';
 END;
 $$ LANGUAGE plpgsql;
-
--- nao teste esse trigger
-CREATE TRIGGER trigger_cadastrar_anuncio_com_localizacoes
-BEFORE INSERT ON anuncio
-FOR EACH ROW
-EXECUTE FUNCTION cadastrar_anuncio_com_localizacoes(
-    NEW.id_livro,
-    NEW.id_usuario,
-    NEW.id_conservacao,
-    NEW.valor,
-    NEW.descricao,
-    NEW.id_tipo_transacao,
-    NEW.id_localizacoes
-);
-
    
 
 
@@ -107,9 +94,9 @@ BEGIN
                 id_livro = (SELECT id_livro FROM anuncio WHERE id_anuncio = NEW.id_anuncio) AND
                 id_localizacao = ANY(SELECT id_localizacao FROM local_anuncio WHERE id_anuncio = NEW.id_anuncio) AND
                 (
-                    (SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 1 AND aceita_trocas = FALSE OR
-                    (SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 2 OR
-                    (SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 3
+                    (SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 1 OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 2 AND aceita_trocas = TRUE) OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 3 AND aceita_trocas = TRUE)
                 ) AND
                 valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio)
 			and     (SELECT removido FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = FALSE
@@ -123,9 +110,9 @@ BEGIN
                 id_livro = (SELECT id_livro FROM anuncio WHERE id_anuncio = NEW.id_anuncio) AND
                 id_localizacao = ANY(SELECT id_localizacao FROM local_anuncio WHERE id_anuncio = NEW.id_anuncio) AND
                 (
-                    (SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 1 AND aceita_trocas = FALSE OR
-                    (SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 2 OR
-                    (SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 3
+                    (SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 1 OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 2 AND aceita_trocas = TRUE) OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 3 AND aceita_trocas = TRUE)
                 ) AND
                 valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio) and
 				(SELECT removido FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = FALSE;
@@ -150,46 +137,6 @@ CREATE TRIGGER trigger_verificar_wishlists_correspondentes_aos_anuncios
 AFTER INSERT OR UPDATE OR DELETE ON anuncio
 FOR EACH ROW
 EXECUTE FUNCTION verificar_wishlists_correspondentes_aos_anuncios();
-
-
-
-
--- testes
-
-
-
-
-
-
-DELETE from anuncio
-where id_anuncio = 1
-
-
-
-
-delete from anuncio
-where id_anuncio =10
-
-delete from local_anuncio
-where id_anuncio = 10
-
-
-select atualizar_local_anuncio(11,2,3)
-select adicionar_local_para_anuncio(10,3);
-
-
--- Chamada da função para cadastrar anúncio com várias localizações
-SELECT cadastrar_anuncio_com_localizacoes(
-    1, -- id_livro
-    1, -- id_usuario
-    1, -- id_conservacao
-    10.99, -- valor
-    'Anúncio de livro', -- descricao
-    1, -- id_tipo_transacao
-    ARRAY[
-        1,8
-    ]
-);
 
 
 
