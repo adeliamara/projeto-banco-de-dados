@@ -169,3 +169,14 @@ CREATE TRIGGER atualizacao_anuncio_fechado_trigger
 AFTER UPDATE ON anuncio
 FOR EACH ROW
 EXECUTE FUNCTION atualizar_anuncio_fechado();
+
+
+CREATE OR REPLACE FUNCTION marcar_anuncio_como_fechado(p_id_anuncio INT)
+  RETURNS VOID AS $$
+BEGIN
+  UPDATE anuncio
+  SET data_finalizacao = CURRENT_TIMESTAMP
+  WHERE id_anuncio = p_id_anuncio;
+  raise info 'Anúncio fechado %',p_id_anuncio ;
+END;
+$$ LANGUAGE plpgsql;
