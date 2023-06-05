@@ -1,3 +1,29 @@
+CREATE OR REPLACE FUNCTION verificar_se_avaliacao_existe(var_id_avaliacao int)
+RETURNS VOID AS $$
+DECLARE
+avaliacao_existe bool;
+BEGIN
+SELECT NOT EXISTS (SELECT * FROM AVALIACAO WHERE AVALIACAO.ID_AVALIACAO = var_id_avaliacao) INTO avaliacao_existe;
+IF (avaliacao_existe) THEN
+RAISE EXCEPTION 'Avaliação não existe.';
+END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION verificar_se_usuario_existe(var_id_usuario int)
+RETURNS VOID AS $$
+DECLARE
+usuario_existe bool;
+BEGIN
+SELECT NOT EXISTS (SELECT * FROM usuario WHERE USUARIO.ID_USUARIO = var_id_usuario) INTO usuario_existe;
+IF (usuario_existe) THEN
+RAISE EXCEPTION 'Usuário não existe.';
+END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
 -- FUNÇÃO: curtir uma avaliação
 CREATE OR REPLACE FUNCTION curtir_avaliacao(var_id_usuario INT, var_id_avaliacao INT)
 RETURNS VOID AS $$
@@ -21,6 +47,9 @@ CREATE FUNCTION descurtir_avaliacao(var_id_usuario INT, var_id_avaliacao INT)
 RETURNS VOID AS $$
 
 BEGIN
+
+
+
     DELETE FROM curtida
     WHERE curtida.id_usuario = var_id_usuario and curtida.id_avaliacao = var_id_avaliacao;
 
