@@ -138,3 +138,30 @@ BEGIN
     RAISE NOTICE 'Usuário de id % tornou-se perigoso', var_id_user;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+
+CREATE OR REPLACE FUNCTION atualizar_usuario(
+  p_id_usuario INT,
+  p_login VARCHAR(50) DEFAULT NULL,
+  p_senha VARCHAR(50) DEFAULT NULL,
+  p_nome VARCHAR(255) DEFAULT NULL,
+  p_contato VARCHAR(255) DEFAULT NULL,
+  p_telefone VARCHAR(20) DEFAULT NULL,
+  p_email VARCHAR(255) DEFAULT NULL,
+  p_comportamento_perigoso BOOLEAN DEFAULT NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE usuario SET
+    login = COALESCE(p_login, login),
+    senha = COALESCE(p_senha, senha),
+    nome = COALESCE(p_nome, nome),
+    contato = COALESCE(p_contato, contato),
+    telefone = COALESCE(p_telefone, telefone),
+    email = COALESCE(p_email, email),
+    comportamento_perigoso = COALESCE(p_comportamento_perigoso, comportamento_perigoso)
+  WHERE id_usuario = p_id_usuario;
+END;
+$$ LANGUAGE plpgsql;

@@ -135,3 +135,37 @@ EXECUTE FUNCTION verificar_wishlists_correspondentes_aos_anuncios();
 
 
 
+-- '
+
+
+CREATE OR REPLACE FUNCTION restaurar_anuncio_removido(var_id_anuncio INT)
+RETURNS VOID AS $$
+DECLARE
+BEGIN
+    UPDATE anuncio SET removido = false
+    WHERE id_anuncio = var_id_anuncio; 
+
+        RAISE NOTICE 'O anúncio  de id % foi restaurado', var_id_anuncio;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION atualizar_anuncio_fechado()
+  RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.data_finalizacao IS NOT NULL THEN
+    UPDATE anuncios_desejados SET anuncio_fechado = TRUE WHERE id_anuncio = NEW.id_anuncio;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER atualizacao_anuncio_fechado_trigger
+AFTER UPDATE ON anuncio
+FOR EACH ROW
+EXECUTE FUNCTION atualizar_anuncio_fechado();

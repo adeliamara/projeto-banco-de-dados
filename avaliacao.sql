@@ -61,3 +61,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+CREATE FUNCTION restaurar_avalicacao_removida(var_id_avaliacao INT)
+RETURNS VOID AS $$
+DECLARE
+BEGIN
+    UPDATE avaliacao SET removida = false
+    WHERE id_avaliacao = var_id_avaliacao; 
+
+        RAISE NOTICE 'A da avaliação de id % foi restaurada', var_id_avaliacao;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+

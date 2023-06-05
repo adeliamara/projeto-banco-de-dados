@@ -431,6 +431,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION restaurar_avalicacao_removida(var_id_avaliacao INT)
+RETURNS VOID AS $$
+DECLARE
+BEGIN
+    UPDATE avaliacao SET removido = false
+    WHERE id_avaliacao = var_id_avaliacao; 
+
+        RAISE NOTICE 'A da avaliação de id % foi restaurada', var_id_avaliacao;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
 
 
 -- ========================================================= Tabela CURTIDAS
@@ -589,6 +602,31 @@ BEGIN
     VALUES(DEFAULT, var_login, var_senha, var_nome, var_contato, DEFAULT, var_telefone, var_email, DEFAULT);
 
     RAISE NOTICE '% foi cadastrado com sucesso', var_nome;
+END;
+$$ LANGUAGE plpgsql;
+--'
+
+CREATE OR REPLACE FUNCTION atualizar_usuario(
+  p_id_usuario INT,
+  p_login VARCHAR(50) DEFAULT NULL,
+  p_senha VARCHAR(50) DEFAULT NULL,
+  p_nome VARCHAR(255) DEFAULT NULL,
+  p_contato VARCHAR(255) DEFAULT NULL,
+  p_telefone VARCHAR(20) DEFAULT NULL,
+  p_email VARCHAR(255) DEFAULT NULL,
+  p_comportamento_perigoso BOOLEAN DEFAULT NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE usuario SET
+    login = COALESCE(p_login, login),
+    senha = COALESCE(p_senha, senha),
+    nome = COALESCE(p_nome, nome),
+    contato = COALESCE(p_contato, contato),
+    telefone = COALESCE(p_telefone, telefone),
+    email = COALESCE(p_email, email),
+    comportamento_perigoso = COALESCE(p_comportamento_perigoso, comportamento_perigoso)
+  WHERE id_usuario = p_id_usuario;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -998,13 +1036,37 @@ EXECUTE FUNCTION verificar_wishlists_correspondentes_aos_anuncios();
 
 
 
+CREATE OR REPLACE FUNCTION restaurar_anuncio_removido(var_id_anuncio INT)
+RETURNS VOID AS $$
+DECLARE
+BEGIN
+    UPDATE anuncio SET removido = false
+    WHERE id_anuncio = var_id_anuncio; 
+
+        RAISE NOTICE 'O anúncio  de id % foi restaurado', var_id_anuncio;
+
+END;
+$$ LANGUAGE plpgsql;
 
 
 
 
 
 
+CREATE OR REPLACE FUNCTION atualizar_anuncio_fechado()
+  RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.data_finalizacao IS NOT NULL THEN
+    UPDATE anuncios_desejados SET anuncio_fechado = TRUE WHERE id_anuncio = NEW.id_anuncio;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
+CREATE TRIGGER atualizacao_anuncio_fechado_trigger
+AFTER UPDATE ON anuncio
+FOR EACH ROW
+EXECUTE FUNCTION atualizar_anuncio_fechado();
 
 
 
