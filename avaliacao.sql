@@ -24,12 +24,26 @@ DECLARE
 BEGIN
     UPDATE avaliacao SET removido = true
     WHERE id_avaliacao = var_id_avaliacao; 
+
+    RAISE NOTICE 'A avaliação de id % foi removida', var_id_avaliacao;
 END;
 $$ LANGUAGE plpgsql;
 
 
--- trigger: bloquear delete da avaliação
+-- TRIGGER DELETE e update: Bloquear delete  na tabela autor_livro
 
+CREATE OR REPLACE FUNCTION bloquear_delete_na_tabela_avaliacao()
+RETURNS trigger as $$
+BEGIN
+    RAISE EXCEPTION 'Não é possível realizar operação de delete na tabela avaliacao';
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_bloquear_delete_tabela_avaliacao
+BEFORE DELETE ON avaliacao
+FOR EACH ROW
+EXECUTE PROCEDURE bloquear_delete_na_tabela_avaliacao();
 
 
 
@@ -41,6 +55,9 @@ DECLARE
 BEGIN
     UPDATE avaliacao SET conteudo = var_conteudo
     WHERE id_avaliacao = var_id_avaliacao; 
+
+        RAISE NOTICE 'O conteúdo da avaliação de id % foi atualizado', var_id_avaliacao;
+
 END;
 $$ LANGUAGE plpgsql;
 
