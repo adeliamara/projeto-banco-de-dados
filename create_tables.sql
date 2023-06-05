@@ -24,9 +24,10 @@ CREATE TABLE avaliacao (
  	id_usuario INT NOT NULL,
 
 
- 	conteudo_avaliacao TEXT NOT NULL,
+ 	conteudo TEXT NOT NULL,
  	quantidade_curtidas INT DEFAULT 0,
   	removido BOOLEAN NOT NULL DEFAULT FALSE,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
 
  	FOREIGN KEY (id_livro) REFERENCES livro (id_livro),
@@ -46,13 +47,13 @@ CREATE TABLE curtida (
 
 
 CREATE TABLE conservacao(
-	id_conservacao SERIAL PRIMARY KEY,
+	id_conservacao INT PRIMARY KEY,
 	estado_conservacao VARCHAR(32) NOT NULL  			
 );
 
 
 CREATE TABLE tipo_transacao(
-	id_tipo_transacao SERIAL PRIMARY KEY,
+	id_tipo_transacao INT PRIMARY KEY,
 	tipo_transacao VARCHAR(32) NOT NULL			
 );
 		
@@ -122,7 +123,7 @@ CREATE TABLE anuncios_desejados (
 
 
   	FOREIGN KEY (id_anuncio) REFERENCES anuncio (id_anuncio),
-  	FOREIGN KEY (id_wishlist) REFERENCES wishlist (id_wishlist)
+    	FOREIGN KEY (id_wishlist) REFERENCES wishlist (id_wishlist) ON DELETE CASCADE
 );
 
 
@@ -132,10 +133,17 @@ CREATE TABLE AUTOR (
 );
 
 CREATE TABLE AUTOR_LIVRO (
-	id_autor_livro SERIAL PRIMARY KEY,
 	id_autor INT NOT NULL,
 	id_livro INT NOT NULL,
 
+	PRIMARY KEY (id_autor, id_livro),
 	FOREIGN KEY (id_livro) REFERENCES livro (id_livro),
 	FOREIGN KEY (id_autor) REFERENCES autor (id_autor)
+);
+
+CREATE TABLE alerta (
+  id_alerta SERIAL PRIMARY KEY,
+  id_usuario INT NOT NULL,
+  data_alerta TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  descricao TEXT
 );
