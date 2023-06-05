@@ -117,10 +117,6 @@ BEGIN
                 ) AND
                 valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio) and
 				(SELECT removido FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = FALSE;
-
-            -- Inserir registros correspondentes na tabela anuncios_desejados
-            INSERT INTO anuncios_desejados (id_wishlist, id_anuncio, anuncio_fechado)
-            VALUES (v_wishlist_id, NEW.id_anuncio, false);
         ELSE
             -- Excluir registros na tabela anuncios_desejados se não correspondem a nenhuma wishlist
             DELETE FROM anuncios_desejados WHERE id_anuncio = NEW.id_anuncio;

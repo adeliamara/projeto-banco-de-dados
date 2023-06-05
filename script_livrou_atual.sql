@@ -777,6 +777,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION check_duplicate_local_anuncio() RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM local_anuncio
+        WHERE id_local_anuncio <> NEW.id_local_anuncio
+        AND id_anuncio = NEW.id_anuncio
+        AND id_localizacao = NEW.id_localizacao
+    ) THEN
+        RAISE EXCEPTION 'Já existe um par com o mesmo id_anuncio e id_localizacao';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_duplicate_local_anuncio_trigger
+BEFORE INSERT OR UPDATE ON local_anuncio
+FOR EACH ROW
+EXECUTE FUNCTION check_duplicate_local_anuncio();
+
+
 
 -- ========================================================= Tabela wishlist
 
@@ -955,9 +975,6 @@ BEGIN
                 valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio) and
 				(SELECT removido FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = FALSE;
 
-            -- Inserir registros correspondentes na tabela anuncios_desejados
-            INSERT INTO anuncios_desejados (id_wishlist, id_anuncio, anuncio_fechado)
-            VALUES (v_wishlist_id, NEW.id_anuncio, false);
         ELSE
             -- Excluir registros na tabela anuncios_desejados se não correspondem a nenhuma wishlist
             DELETE FROM anuncios_desejados WHERE id_anuncio = NEW.id_anuncio;
