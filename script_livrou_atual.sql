@@ -941,7 +941,8 @@ BEGIN
 
         IF v_wishlist_exists THEN
             -- Obter o ID da wishlist correspondente
-            SELECT id_wishlist INTO v_wishlist_id
+            INSERT INTO anuncios_desejados (id_anuncio, id_wishlist, anuncio_fechado)
+            SELECT NEW.id_anuncio, id_wishlist, false            
             FROM wishlist
             WHERE
                 id_livro = (SELECT id_livro FROM anuncio WHERE id_anuncio = NEW.id_anuncio) AND
