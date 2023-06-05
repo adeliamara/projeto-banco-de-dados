@@ -70,7 +70,7 @@ CREATE TABLE anuncio (
   valor REAL NOT NULL,
   descricao VARCHAR(255) NOT NULL,
   data_postagem TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  data_finalizacao TIMESTAMP,
+  data_finalizacao TIMESTAMP DEFAULT NULL,
   id_tipo_transacao INT NOT NULL,
   removido BOOLEAN NOT NULL DEFAULT FALSE,
 
