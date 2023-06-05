@@ -31,13 +31,19 @@ $$ LANGUAGE plpgsql;
 
 -- Listar alertas de comportamentos perigosos
 
-CREATE FUNCTION listar_alertas()
-RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION listar_alertas()
+RETURNS TABLE (
+    alerta_id INT,
+    alerta_descricao TEXT,
+    data_criacao TIMESTAMP
+) AS $$
 BEGIN
-    SELECT * FROM ALERTA;
+    RETURN QUERY 
+    SELECT id_alerta, descricao AS alerta_descricao, data_alerta
+    FROM ALERTA
+    ORDER BY data_alerta DESC;
 END;
 $$ LANGUAGE plpgsql;
-
 
 -- FUNCTION: Remover anúncios e avaliações de usuário com comportamento perigoso
 
@@ -113,7 +119,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_verificar_comportamento_perigoso
-BEFORE INSERT OR UPDATE ON usuario
+AFTER INSERT OR UPDATE ON usuario
 FOR EACH ROW
 EXECUTE FUNCTION verificar_comportamento_perigoso();
 
@@ -123,8 +129,12 @@ EXECUTE FUNCTION verificar_comportamento_perigoso();
 CREATE FUNCTION alterar_comportamento_do_usuario_para_perigoso(var_id_user int)
 RETURNS VOID AS $$
 BEGIN
+
+    PERFORM verificar_se_usuario_existe(var_id_user);
+
     UPDATE USUARIO
     SET COMPORTAMENTO_PERIGOSO = TRUE
     WHERE id_usuario = var_id_user;
+    RAISE NOTICE 'Usuário de id % tornou-se perigoso', var_id_user;
 END;
 $$ LANGUAGE plpgsql;

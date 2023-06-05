@@ -210,6 +210,36 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+-- FUNÇÃO: atualizar autor
+
+CREATE OR REPLACE FUNCTION atualizar_autor(var_id_autor INT, var_nome TEXT)
+RETURNS VOID AS $$
+DECLARE
+BEGIN
+
+    UPDATE autor
+    SET NOME = var_nome
+    WHERE id_autor = var_id_autor;
+
+	RAISE NOTICE 'Autor de id % foi atualizado', var_id_autor;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- TRIGGER DELETE: não é possível deletar na tabela autor
+CREATE OR REPLACE FUNCTION bloquear_delete_na_tabela_autor()
+RETURNS trigger as $$
+BEGIN
+    RAISE EXCEPTION 'Não é possível realizar operação de delete na tabela autor';
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_bloquear_delete_tabela_autor
+BEFORE DELETE ON autor
+FOR EACH ROW
+EXECUTE PROCEDURE bloquear_delete_na_tabela_autor();
 
 
 
@@ -287,9 +317,20 @@ $$ LANGUAGE plpgsql;
 
 
 
--- FUNCTION BLOQUEAR ALGUMA COISA NO LIVRO
+-- TRIGGER DELETE e update: Bloquear delete e update na tabela autor_livro
+
+CREATE OR REPLACE FUNCTION bloquear_delete_update_na_tabela_autor_livro()
+RETURNS trigger as $$
+BEGIN
+    RAISE EXCEPTION 'Não é possível realizar operação de delete ou update na tabela autor_livro';
+END;
+$$ LANGUAGE plpgsql;
 
 
+CREATE TRIGGER trigger_bloquear_delete_update_tabela_autor_livro
+BEFORE DELETE OR UPDATE ON autor_livro
+FOR EACH ROW
+EXECUTE PROCEDURE bloquear_delete_update_na_tabela_autor_livro();
 
 
 -- FUNCTION: inserir livro no banco de dados
@@ -353,12 +394,26 @@ DECLARE
 BEGIN
     UPDATE avaliacao SET removido = true
     WHERE id_avaliacao = var_id_avaliacao; 
+
+    RAISE NOTICE 'A avaliação de id % foi removida', var_id_avaliacao;
 END;
 $$ LANGUAGE plpgsql;
 
 
--- trigger: bloquear delete da avaliação
+-- TRIGGER DELETE e update: Bloquear delete  na tabela autor_livro
 
+CREATE OR REPLACE FUNCTION bloquear_delete_na_tabela_avaliacao()
+RETURNS trigger as $$
+BEGIN
+    RAISE EXCEPTION 'Não é possível realizar operação de delete na tabela avaliacao';
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_bloquear_delete_tabela_avaliacao
+BEFORE DELETE ON avaliacao
+FOR EACH ROW
+EXECUTE PROCEDURE bloquear_delete_na_tabela_avaliacao();
 
 
 
@@ -370,12 +425,11 @@ DECLARE
 BEGIN
     UPDATE avaliacao SET conteudo = var_conteudo
     WHERE id_avaliacao = var_id_avaliacao; 
+
+        RAISE NOTICE 'O conteúdo da avaliação de id % foi atualizado', var_id_avaliacao;
+
 END;
 $$ LANGUAGE plpgsql;
-
-
-
-
 
 
 
@@ -389,7 +443,7 @@ avaliacao_existe bool;
 BEGIN
 SELECT NOT EXISTS (SELECT * FROM AVALIACAO WHERE AVALIACAO.ID_AVALIACAO = var_id_avaliacao) INTO avaliacao_existe;
 IF (avaliacao_existe) THEN
-RAISE EXCEPTION 'Avaliação não existe.';
+RAISE EXCEPTION 'Avaliação de id % não existe.', var_id_avaliacao;
 END IF;
 END;
 $$ LANGUAGE plpgsql;
@@ -398,12 +452,12 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION verificar_se_usuario_existe(var_id_usuario int)
 RETURNS VOID AS $$
 DECLARE
-    usuario_existe bool;
+usuario_existe bool;
 BEGIN
-    SELECT NOT EXISTS (SELECT * FROM usuario WHERE USUARIO.ID_USUARIO = var_id_usuario) INTO usuario_existe;
-    IF (usuario_existe) THEN
-        RAISE EXCEPTION 'Usuário não existe.';
-    END IF;
+SELECT NOT EXISTS (SELECT * FROM usuario WHERE USUARIO.ID_USUARIO = var_id_usuario) INTO usuario_existe;
+IF (usuario_existe) THEN
+RAISE EXCEPTION 'Usuário de id % não existe.', var_id_usuario;
+END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -431,12 +485,9 @@ CREATE OR REPLACE FUNCTION descurtir_avaliacao(var_id_usuario INT, var_id_avalia
 RETURNS VOID AS $$
 
 BEGIN
+
     PERFORM verificar_se_usuario_existe(var_id_usuario);
     PERFORM verificar_se_avaliacao_existe(var_id_avaliacao);
-
-    IF NOT EXISTS (SELECT 1 FROM CURTIDA WHERE ID_USUARIO = VAR_ID_USUARIO AND ID_AVALIACAO = VAR_ID_AVALIACAO) THEN
-        RAISE EXCEPTION 'Curtida não existe';
-    END IF;
 
     DELETE FROM curtida
     WHERE curtida.id_usuario = var_id_usuario and curtida.id_avaliacao = var_id_avaliacao;
@@ -561,10 +612,17 @@ $$ LANGUAGE plpgsql;
 
 -- Listar alertas de comportamentos perigosos
 
-CREATE FUNCTION listar_alertas()
-RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION listar_alertas()
+RETURNS TABLE (
+    alerta_id INT,
+    alerta_descricao TEXT,
+    data_criacao TIMESTAMP
+) AS $$
 BEGIN
-    SELECT * FROM ALERTA;
+    RETURN QUERY 
+    SELECT id_alerta, descricao AS alerta_descricao, data_alerta
+    FROM ALERTA
+    ORDER BY data_alerta DESC;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -643,7 +701,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_verificar_comportamento_perigoso
-BEFORE INSERT OR UPDATE ON usuario
+AFTER INSERT OR UPDATE ON usuario
 FOR EACH ROW
 EXECUTE FUNCTION verificar_comportamento_perigoso();
 
@@ -653,9 +711,13 @@ EXECUTE FUNCTION verificar_comportamento_perigoso();
 CREATE FUNCTION alterar_comportamento_do_usuario_para_perigoso(var_id_user int)
 RETURNS VOID AS $$
 BEGIN
+
+    PERFORM verificar_se_usuario_existe(var_id_user);
+
     UPDATE USUARIO
     SET COMPORTAMENTO_PERIGOSO = TRUE
     WHERE id_usuario = var_id_user;
+    RAISE NOTICE 'Usuário de id % tornou-se perigoso', var_id_user;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -821,6 +883,8 @@ BEGIN
         INSERT INTO local_anuncio (id_localizacao, id_anuncio)
         VALUES (v_id_localizacao, v_anuncio_id);
     END LOOP;
+    
+    RAISE NOTICE 'Anúncio publicado.';
 END;
 $$ LANGUAGE plpgsql;
 
@@ -932,7 +996,7 @@ EXECUTE FUNCTION verificar_wishlists_correspondentes_aos_anuncios();
 
 
 ------------------------------------------------------------ Tabela LOCAL_ANÚNCIO
-
+ 
 
 CREATE OR REPLACE FUNCTION verificar_existencia_local_anuncio()
 RETURNS TRIGGER AS $$
