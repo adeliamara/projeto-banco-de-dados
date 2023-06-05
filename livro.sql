@@ -25,7 +25,7 @@ BEGIN
 	SELECT autor.nome FROM autor
 	JOIN autor_livro ON autor.id_autor = autor_livro.id_autor
     JOIN livro ON autor_livro.id_livro = livro.id_livro
-	WHERE livro.titulo = var_titulo
+	WHERE livro.titulo = var_titulo;
 
 
 	FOR i IN 1..array_length(var_autores, 1) LOOP
@@ -70,7 +70,20 @@ $$ LANGUAGE plpgsql;
 
 
 
--- FUNCTION BLOQUEAR 
+-- TRIGGER DELETE e update: Bloquear delete e update na tabela autor_livro
+
+CREATE OR REPLACE FUNCTION bloquear_delete_update_na_tabela_autor_livro()
+RETURNS trigger as $$
+BEGIN
+    RAISE EXCEPTION 'Não é possível realizar operação de delete ou update na tabela autor_livro';
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_bloquear_delete_update_tabela_autor_livro
+BEFORE DELETE OR UPDATE ON autor_livro
+FOR EACH ROW
+EXECUTE PROCEDURE bloquear_delete_update_na_tabela_autor_livro();
 
 
 
@@ -102,7 +115,6 @@ BEGIN
 	RAISE NOTICE 'O livro % foi inserido', var_titulo;
 END;
 $$ LANGUAGE plpgsql;
-
 
 
 
