@@ -25,8 +25,10 @@ CREATE TABLE avaliacao (
 
 
  	conteudo TEXT NOT NULL,
+ 	conteudo TEXT NOT NULL,
  	quantidade_curtidas INT DEFAULT 0,
   	removido BOOLEAN NOT NULL DEFAULT FALSE,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
 
@@ -68,7 +70,7 @@ CREATE TABLE anuncio (
   valor REAL NOT NULL,
   descricao VARCHAR(255) NOT NULL,
   data_postagem TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  data_finalizacao TIMESTAMP,
+  data_finalizacao TIMESTAMP DEFAULT NULL,
   id_tipo_transacao INT NOT NULL,
   removido BOOLEAN NOT NULL DEFAULT FALSE,
 
