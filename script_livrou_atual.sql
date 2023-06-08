@@ -1252,3 +1252,26 @@ CREATE TRIGGER trigger_verificar_wishlists_correspondentes_aos_anuncios_com_nova
 AFTER INSERT OR UPDATE OR DELETE ON local_anuncio
 FOR EACH ROW
 EXECUTE FUNCTION verificar_wishlists_correspondentes_aos_anuncios_com_nova_localizacao();
+
+
+
+--'
+
+
+-- Função generica para inserir registros em todas as tabelas
+
+CREATE OR REPLACE FUNCTION cadastrar(tabela_name TEXT, variadic valores TEXT[])
+RETURNS VOID AS $$
+DECLARE
+  colunas TEXT;
+BEGIN
+  EXECUTE format('INSERT INTO %I VALUES (%s)',
+    tabela_name,
+    array_to_string(valores, ', ')
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Inserindo um registro na tabela "avaliacao"
+SELECT cadastrar('avaliacao', 'default','1', '1', '''titulo2''','2', 'false', '''2022-01-01''');
