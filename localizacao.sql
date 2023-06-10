@@ -33,21 +33,6 @@ FOR EACH ROW
 EXECUTE FUNCTION verificar_localizacao_existente();
 
 
-CREATE OR REPLACE FUNCTION cadastrar_localizacao(
-    p_municipio VARCHAR(255),
-    p_estado VARCHAR(255)
-)
-RETURNS INT AS $$
-DECLARE
-    v_localizacao_id INT;
-BEGIN
-    INSERT INTO localizacao (municipio, estado)
-    VALUES (p_municipio, p_estado)
-    RETURNING id_localizacao INTO v_localizacao_id;
-
-    RETURN v_localizacao_id;
-END;
-$$ LANGUAGE plpgsql;
 
 
 

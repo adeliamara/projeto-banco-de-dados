@@ -38,19 +38,6 @@ after insert or UPDATE on wishlist
 for each row
 execute procedure verificar_anuncios_para_wishlist(); 
 
-------------------------------
-
-CREATE OR REPLACE FUNCTION cadastrar_wishlist(id_livro INT, id_usuario INT, id_localizacao INT,  valor_maximo REAL, aceita_trocas BOOLEAN)
-RETURNS VOID AS $$
-BEGIN
-    INSERT INTO wishlist
-    VALUES(DEFAULT, id_livro, id_usuario, id_localizacao, valor_maximo, aceita_trocas);
-	RAISE NOTICE 'Wishlist cadastrada!';
-END;
-$$ LANGUAGE plpgsql;
-
-
-
 
 
 -------------------------------
