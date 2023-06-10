@@ -317,3 +317,115 @@ select * from wishlist;
 
 
 
+-- '
+
+CREATE OR REPLACE FUNCTION atualizar_anuncio(
+  p_id_anuncio INT,
+  p_id_livro INT = NULL,
+  p_id_usuario INT = NULL,
+  p_id_conservacao INT = NULL,
+  p_valor REAL = NULL,
+  p_descricao VARCHAR(255) = NULL,
+  p_data_postagem TIMESTAMP = NULL,
+  p_data_finalizacao TIMESTAMP = NULL,
+  p_id_tipo_transacao INT = NULL,
+  p_removido BOOLEAN = NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE anuncio
+  SET
+    id_livro = COALESCE(p_id_livro, id_livro),
+    id_usuario = COALESCE(p_id_usuario, id_usuario),
+    id_conservacao = COALESCE(p_id_conservacao, id_conservacao),
+    valor = COALESCE(p_valor, valor),
+    descricao = COALESCE(p_descricao, descricao),
+    data_postagem = COALESCE(p_data_postagem, data_postagem),
+    data_finalizacao = COALESCE(p_data_finalizacao, data_finalizacao),
+    id_tipo_transacao = COALESCE(p_id_tipo_transacao, id_tipo_transacao),
+    removido = COALESCE(p_removido, removido)
+  WHERE id_anuncio = p_id_anuncio;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- '
+CREATE OR REPLACE FUNCTION atualizar_wishlist(
+  p_id_wishlist INT,
+  p_id_livro INT = NULL,
+  p_id_usuario INT = NULL,
+  p_id_localizacao INT = NULL,
+  p_valor_maximo REAL = NULL,
+  p_aceita_trocas BOOLEAN = NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE wishlist
+  SET
+    id_livro = COALESCE(p_id_livro, id_livro),
+    id_usuario = COALESCE(p_id_usuario, id_usuario),
+    id_localizacao = COALESCE(p_id_localizacao, id_localizacao),
+    valor_maximo = COALESCE(p_valor_maximo, valor_maximo),
+    aceita_trocas = COALESCE(p_aceita_trocas, aceita_trocas)
+  WHERE id_wishlist = p_id_wishlist;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION atualizar_conservacao(
+  p_id_conservacao INT,
+  p_estado_conservacao VARCHAR(32) = NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE conservacao
+  SET
+    estado_conservacao = COALESCE(p_estado_conservacao, estado_conservacao)
+  WHERE id_conservacao = p_id_conservacao;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION atualizar_tipo_transacao(
+  p_id_tipo_transacao INT,
+  p_tipo_transacao VARCHAR(32) = NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE tipo_transacao
+  SET
+    tipo_transacao = COALESCE(p_tipo_transacao, tipo_transacao)
+  WHERE id_tipo_transacao = p_id_tipo_transacao;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Trigger para proibir DELETE e UPDATE em anuncios_desejados
+CREATE OR REPLACE FUNCTION proibir_delete_update_anuncios_desejados()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'DELETE e UPDATE não são permitidos em anuncios_desejados';
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tr_proibir_delete_update_anuncios_desejados
+BEFORE DELETE OR UPDATE ON anuncios_desejados
+FOR EACH ROW
+EXECUTE FUNCTION proibir_delete_update_anuncios_desejados();
+
+
+
+-- Trigger para proibir DELETE e UPDATE em autor_livro
+CREATE OR REPLACE FUNCTION proibir_delete_update_autor_livro()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'DELETE e UPDATE não são permitidos em autor_livro';
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tr_proibir_delete_update_autor_livro
+BEFORE DELETE OR UPDATE ON autor_livro
+FOR EACH ROW
+EXECUTE FUNCTION proibir_delete_update_autor_livro();

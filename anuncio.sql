@@ -180,3 +180,33 @@ BEGIN
   raise info 'Anúncio fechado %',p_id_anuncio ;
 END;
 $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION atualizar_anuncio(
+  p_id_anuncio INT,
+  p_id_livro INT = NULL,
+  p_id_usuario INT = NULL,
+  p_id_conservacao INT = NULL,
+  p_valor REAL = NULL,
+  p_descricao VARCHAR(255) = NULL,
+  p_data_postagem TIMESTAMP = NULL,
+  p_data_finalizacao TIMESTAMP = NULL,
+  p_id_tipo_transacao INT = NULL,
+  p_removido BOOLEAN = NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE anuncio
+  SET
+    id_livro = COALESCE(p_id_livro, id_livro),
+    id_usuario = COALESCE(p_id_usuario, id_usuario),
+    id_conservacao = COALESCE(p_id_conservacao, id_conservacao),
+    valor = COALESCE(p_valor, valor),
+    descricao = COALESCE(p_descricao, descricao),
+    data_postagem = COALESCE(p_data_postagem, data_postagem),
+    data_finalizacao = COALESCE(p_data_finalizacao, data_finalizacao),
+    id_tipo_transacao = COALESCE(p_id_tipo_transacao, id_tipo_transacao),
+    removido = COALESCE(p_removido, removido)
+  WHERE id_anuncio = p_id_anuncio;
+END;
+$$ LANGUAGE plpgsql;

@@ -66,3 +66,24 @@ SELECT cadastrar_wishlist(1,1,1, 8, true);
 select * from anuncios_desejados
 
 --
+
+CREATE OR REPLACE FUNCTION atualizar_wishlist(
+  p_id_wishlist INT,
+  p_id_livro INT = NULL,
+  p_id_usuario INT = NULL,
+  p_id_localizacao INT = NULL,
+  p_valor_maximo REAL = NULL,
+  p_aceita_trocas BOOLEAN = NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE wishlist
+  SET
+    id_livro = COALESCE(p_id_livro, id_livro),
+    id_usuario = COALESCE(p_id_usuario, id_usuario),
+    id_localizacao = COALESCE(p_id_localizacao, id_localizacao),
+    valor_maximo = COALESCE(p_valor_maximo, valor_maximo),
+    aceita_trocas = COALESCE(p_aceita_trocas, aceita_trocas)
+  WHERE id_wishlist = p_id_wishlist;
+END;
+$$ LANGUAGE plpgsql;
