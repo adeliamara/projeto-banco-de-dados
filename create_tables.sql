@@ -3,7 +3,6 @@ CREATE TABLE usuario (
   login VARCHAR(50) UNIQUE NOT NULL,
   senha VARCHAR(50) NOT NULL,
   nome VARCHAR(255) NOT NULL,
-  contato VARCHAR(255) NOT NULL,
   data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   telefone VARCHAR(20) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
@@ -31,7 +30,7 @@ CREATE TABLE avaliacao (
 
 
  	FOREIGN KEY (id_livro) REFERENCES livro (id_livro),
- 	FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario)
+ 	FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE
 );
 
 
@@ -41,8 +40,8 @@ CREATE TABLE curtida (
 	id_avaliacao INT NOT NULL,
 
 
-	FOREIGN KEY (id_avaliacao) REFERENCES avaliacao(id_avaliacao),
-	FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
+	FOREIGN KEY (id_avaliacao) REFERENCES avaliacao(id_avaliacao) ON DELETE CASCADE,
+	FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE
 );
 
 
@@ -74,8 +73,7 @@ CREATE TABLE anuncio (
 
 
   FOREIGN KEY (id_livro) REFERENCES livro (id_livro),
-  FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario),
-  FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario),
+  FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE,
   FOREIGN KEY (id_tipo_transacao) REFERENCES tipo_transacao (id_tipo_transacao)
 );
 
@@ -109,7 +107,7 @@ CREATE TABLE wishlist (
 
 
   	FOREIGN KEY (id_livro) REFERENCES livro (id_livro),
-  	FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario),
+  	FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE,
   	FOREIGN KEY (id_localizacao) REFERENCES localizacao (id_localizacao)
 );
 
@@ -137,8 +135,8 @@ CREATE TABLE AUTOR_LIVRO (
 	id_livro INT NOT NULL,
 
 	PRIMARY KEY (id_autor, id_livro),
-	FOREIGN KEY (id_livro) REFERENCES livro (id_livro),
-	FOREIGN KEY (id_autor) REFERENCES autor (id_autor)
+	FOREIGN KEY (id_livro) REFERENCES livro (id_livro) ON DELETE CASCADE,
+	FOREIGN KEY (id_autor) REFERENCES autor (id_autor) ON DELETE CASCADE
 );
 
 CREATE TABLE alerta (

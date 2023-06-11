@@ -210,3 +210,26 @@ BEGIN
   WHERE id_anuncio = p_id_anuncio;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION verificar_anuncio_removido()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'UPDATE') THEN
+        IF (OLD.removido = true) THEN
+            RAISE EXCEPTION 'Não é permitido fazer update em um anúncio removido.';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_verificar_anuncio_removido
+BEFORE UPDATE ON anuncio
+FOR EACH ROW
+EXECUTE FUNCTION verificar_anuncio_removido();
