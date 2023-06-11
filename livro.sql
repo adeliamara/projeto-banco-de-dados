@@ -1,47 +1,23 @@
--- FUNCTION: verificar se o título do livro já existe
 
-CREATE FUNCTION verificar_se_titulo_ja_existe(var_titulo TEXT)
-RETURNS BOOLEAN AS $$
-DECLARE
+
+-- TRIGGER: verificar se o título do livro já existe
+CREATE OR REPLACE FUNCTION verificar_titulo_existente()
+RETURNS TRIGGER AS $$
 BEGIN
-	RETURN EXISTS (SELECT 1 FROM LIVRO WHERE LIVRO.TITULO ILIKE var_titulo);
+	IF EXISTS (SELECT 1 FROM livro WHERE titulo ILIKE NEW.titulo) THEN
+		RAISE EXCEPTION 'O título que você está inserindo já existe.';
+	END IF;
+	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
+-- Criação da trigger para verificar o título existente
+CREATE TRIGGER trigger_verificar_titulo_existente
+BEFORE INSERT ON livro
+FOR EACH ROW
+EXECUTE FUNCTION verificar_titulo_existente();
 
--- FUNCTION: verificar se o título existente possui os mesmos autores do livro que está sendo inserido
-
-CREATE FUNCTION verificar_se_titulo_existente_possui_autores_repetidos(var_titulo TEXT, var_autores TEXT[])
-RETURNS VOID AS $$
-DECLARE
-
-BEGIN
-
-	CREATE TEMPORARY TABLE autores_encontrados (
-		nome_autor TEXT
-	);
-	
-	INSERT INTO autores_encontrados (nome_autor)
-	SELECT autor.nome FROM autor
-	JOIN autor_livro ON autor.id_autor = autor_livro.id_autor
-    JOIN livro ON autor_livro.id_livro = livro.id_livro
-	WHERE livro.titulo = var_titulo;
-
-
-	FOR i IN 1..array_length(var_autores, 1) LOOP
-
-		IF EXISTS(SELECT 1 FROM autores_encontrados WHERE nome_autor ILIKE var_autores[i]) THEN
-			RAISE EXCEPTION 'O título que você está inserindo já existe';
-		END IF;
-   
-    END LOOP;
-
-	DROP TABLE autores_encontrados;
-
-
-END;
-$$ LANGUAGE plpgsql;
-
+drop trigger trigger_verificar_titulo existente on livro
 
 
 -- FUNCTION: inserir dados na tabela autor_livro
@@ -69,22 +45,32 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+-- Função cadastrar autor pelo nome
 
--- TRIGGER DELETE e update: Bloquear delete e update na tabela autor_livro
-
-CREATE OR REPLACE FUNCTION bloquear_delete_update_na_tabela_autor_livro()
-RETURNS trigger as $$
+CREATE OR REPLACE FUNCTION cadastrar_autor(var_nome TEXT)
+RETURNS VOID AS $$
+DECLARE
 BEGIN
-    RAISE EXCEPTION 'Não é possível realizar operação de delete ou update na tabela autor_livro';
+    INSERT INTO autor
+    VALUES(DEFAULT, var_nome);
+	RAISE NOTICE 'Autor Cadastrado';
+
 END;
 $$ LANGUAGE plpgsql;
 
+-- Função autor já cadastrado
 
-CREATE TRIGGER trigger_bloquear_delete_update_tabela_autor_livro
-BEFORE DELETE OR UPDATE ON autor_livro
-FOR EACH ROW
-EXECUTE PROCEDURE bloquear_delete_update_na_tabela_autor_livro();
+CREATE OR REPLACE FUNCTION autor_ja_cadastrado(var_nome TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+BEGIN
 
+	RETURN (SELECT EXISTS (SELECT * 
+				   FROM autor
+				  WHERE autor.nome ILIKE var_nome));
+
+END;
+$$ LANGUAGE plpgsql;
 
 
 
@@ -94,11 +80,6 @@ CREATE OR REPLACE FUNCTION inserir_livro(var_sinopse TEXT, var_titulo TEXT, var_
 RETURNS VOID AS $$
 DECLARE
 BEGIN
-
-
-	IF verificar_se_titulo_ja_existe(var_titulo) THEN
-		PERFORM verificar_se_titulo_existente_possui_autores_repetidos(var_titulo, var_autores);
-	END IF;
 
 	INSERT INTO livro
 	VALUES (DEFAULT, var_sinopse, var_titulo);
@@ -115,13 +96,3 @@ BEGIN
 	RAISE NOTICE 'O livro % foi inserido', var_titulo;
 END;
 $$ LANGUAGE plpgsql;
-
-
-
-
-
-
-
-
-
-

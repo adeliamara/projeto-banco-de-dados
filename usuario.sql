@@ -1,17 +1,3 @@
--- FUNCTION: cadastrar usuário
-
-CREATE FUNCTION cadastrar_usuario(var_login VARCHAR(50), var_senha VARCHAR(50), var_nome VARCHAR(255), var_contato VARCHAR(255), var_telefone VARCHAR(20), var_email VARCHAR(255))
-RETURNS VOID AS $$
-DECLARE
-BEGIN
-    INSERT INTO USUARIO
-    VALUES(DEFAULT, var_login, var_senha, var_nome, var_contato, DEFAULT, var_telefone, var_email, DEFAULT);
-
-    RAISE NOTICE '% foi cadastrado com sucesso', var_nome;
-END;
-$$ LANGUAGE plpgsql;
-
-
 -- Function: Inserir alerta
 
 CREATE OR REPLACE FUNCTION inserir_alerta(var_id_usuario INT, var_descricao TEXT)
@@ -24,26 +10,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
-
-
-
-
--- Listar alertas de comportamentos perigosos
-
-CREATE OR REPLACE FUNCTION listar_alertas()
-RETURNS TABLE (
-    alerta_id INT,
-    alerta_descricao TEXT,
-    data_criacao TIMESTAMP
-) AS $$
-BEGIN
-    RETURN QUERY 
-    SELECT id_alerta, descricao AS alerta_descricao, data_alerta
-    FROM ALERTA
-    ORDER BY data_alerta DESC;
-END;
-$$ LANGUAGE plpgsql;
 
 -- FUNCTION: Remover anúncios e avaliações de usuário com comportamento perigoso
 
@@ -101,7 +67,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger: verifica comportamento perigoso de usuário e faz algo repassa para uma tabela
+-- Trigger: verifica comportamento perigoso de usuário e repassa para uma tabela
 
 CREATE OR REPLACE FUNCTION verificar_comportamento_perigoso()
 RETURNS TRIGGER AS $$
@@ -112,7 +78,6 @@ BEGIN
 
     PERFORM remover_anuncios_avaliacoes_usuario_perigoso(NEW.id_usuario);
     
-    -- BLOQUEAR ACESSO DO USUÁRIO
   END IF;
   RETURN NEW;
 END;
@@ -124,44 +89,88 @@ FOR EACH ROW
 EXECUTE FUNCTION verificar_comportamento_perigoso();
 
 
--- Function: alterar comportamento de usuário para perigoso
 
-CREATE FUNCTION alterar_comportamento_do_usuario_para_perigoso(var_id_user int)
-RETURNS VOID AS $$
+-- Criação do trigger
+CREATE OR REPLACE FUNCTION bloquear_delete_usuario()
+RETURNS TRIGGER AS $$
 BEGIN
+    IF TG_OP = 'DELETE' AND TG_TABLE_NAME = 'usuario' THEN
+        RAISE EXCEPTION 'Não é permitido excluir usuários.';
+    END IF;
 
-    PERFORM verificar_se_usuario_existe(var_id_user);
-
-    UPDATE USUARIO
-    SET COMPORTAMENTO_PERIGOSO = TRUE
-    WHERE id_usuario = var_id_user;
-    RAISE NOTICE 'Usuário de id % tornou-se perigoso', var_id_user;
+    -- Retorna o resultado do gatilho
+    RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
 
+-- Atribuição do gatilho à tabela usuario
+CREATE TRIGGER trigger_bloquear_delete_usuario
+BEFORE DELETE ON usuario
+FOR EACH ROW
+EXECUTE FUNCTION bloquear_delete_usuario();
 
 
-
-CREATE OR REPLACE FUNCTION atualizar_usuario(
-  p_id_usuario INT,
-  p_login VARCHAR(50) DEFAULT NULL,
-  p_senha VARCHAR(50) DEFAULT NULL,
-  p_nome VARCHAR(255) DEFAULT NULL,
-  p_contato VARCHAR(255) DEFAULT NULL,
-  p_telefone VARCHAR(20) DEFAULT NULL,
-  p_email VARCHAR(255) DEFAULT NULL,
-  p_comportamento_perigoso BOOLEAN DEFAULT NULL
-)
-RETURNS VOID AS $$
+-- Criação do trigger para a tabela avaliacao
+CREATE OR REPLACE FUNCTION bloquear_operacoes_perigosas()
+RETURNS TRIGGER AS $$
+DECLARE
+    comportamento_perigoso BOOLEAN;
 BEGIN
-  UPDATE usuario SET
-    login = COALESCE(p_login, login),
-    senha = COALESCE(p_senha, senha),
-    nome = COALESCE(p_nome, nome),
-    contato = COALESCE(p_contato, contato),
-    telefone = COALESCE(p_telefone, telefone),
-    email = COALESCE(p_email, email),
-    comportamento_perigoso = COALESCE(p_comportamento_perigoso, comportamento_perigoso)
-  WHERE id_usuario = p_id_usuario;
+    SELECT u.comportamento_perigoso INTO comportamento_perigoso
+    FROM usuario u
+    WHERE u.id_usuario = NEW.id_usuario;
+
+    IF comportamento_perigoso = TRUE THEN
+        RAISE EXCEPTION 'Não é permitido inserir, atualizar ou excluir avaliações de usuários com comportamento perigoso.';
+    END IF;
+
+    IF TG_OP = 'DELETE' THEN
+      RETURN OLD;
+    END IF;
+
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_bloquear_operacoes_perigosas_avaliacao
+BEFORE INSERT OR UPDATE OR DELETE ON avaliacao
+FOR EACH ROW
+EXECUTE FUNCTION bloquear_operacoes_perigosas();
+
+
+
+CREATE TRIGGER trigger_bloquear_operacoes_perigosas_curtida
+BEFORE INSERT OR UPDATE OR DELETE ON curtida
+FOR EACH ROW
+EXECUTE FUNCTION bloquear_operacoes_perigosas();
+
+
+
+CREATE TRIGGER trigger_bloquear_operacoes_perigosas_anuncio
+BEFORE INSERT OR UPDATE OR DELETE ON anuncio
+FOR EACH ROW
+EXECUTE FUNCTION bloquear_operacoes_perigosas();
+
+
+
+CREATE TRIGGER trigger_bloquear_operacoes_perigosas_wishlist
+BEFORE INSERT OR UPDATE OR DELETE ON wishlist
+FOR EACH ROW
+EXECUTE FUNCTION bloquear_operacoes_perigosas();
+
+
+CREATE OR REPLACE FUNCTION verificar_alteracao_comportamento_perigoso()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'UPDATE' AND NEW.comportamento_perigoso <> OLD.comportamento_perigoso AND current_user <> 'administrador') THEN
+        RAISE EXCEPTION 'Apenas a role "administrador" pode alterar a coluna "comportamento_perigoso".';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_verificar_alteracao_comportamento_perigoso
+BEFORE UPDATE OF comportamento_perigoso ON usuario
+FOR EACH ROW
+EXECUTE FUNCTION verificar_alteracao_comportamento_perigoso();

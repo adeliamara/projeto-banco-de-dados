@@ -1,13 +1,15 @@
--- Trigger para proibir DELETE e UPDATE em autor_livro
-CREATE OR REPLACE FUNCTION proibir_delete_update_autor_livro()
+CREATE OR REPLACE FUNCTION verificar_permissao_update_autor_livro()
 RETURNS TRIGGER AS $$
 BEGIN
-  RAISE EXCEPTION 'DELETE e UPDATE não são permitidos em autor_livro';
-  RETURN NULL;
+    IF (TG_OP = 'UPDATE' AND current_user <> 'administrador') THEN
+        RAISE EXCEPTION 'Apenas a role "administrador" pode fazer updates na tabela "AUTOR_LIVRO".';
+    END IF;
+
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER tr_proibir_delete_update_autor_livro
-BEFORE DELETE OR UPDATE ON autor_livro
+CREATE TRIGGER trigger_verificar_permissao_update_autor_livro
+BEFORE UPDATE ON AUTOR_LIVRO
 FOR EACH ROW
-EXECUTE FUNCTION proibir_delete_update_autor_livro();
+EXECUTE FUNCTION verificar_permissao_update_autor_livro();

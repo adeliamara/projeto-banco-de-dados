@@ -1,69 +1,3 @@
-CREATE OR REPLACE FUNCTION verificar_se_avaliacao_existe(var_id_avaliacao int)
-RETURNS VOID AS $$
-DECLARE
-avaliacao_existe bool;
-BEGIN
-SELECT NOT EXISTS (SELECT * FROM AVALIACAO WHERE AVALIACAO.ID_AVALIACAO = var_id_avaliacao) INTO avaliacao_existe;
-IF (avaliacao_existe) THEN
-RAISE EXCEPTION 'Avaliação de id % não existe.', var_id_avaliacao;
-END IF;
-END;
-$$ LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE FUNCTION verificar_se_usuario_existe(var_id_usuario int)
-RETURNS VOID AS $$
-DECLARE
-usuario_existe bool;
-BEGIN
-SELECT NOT EXISTS (SELECT * FROM usuario WHERE USUARIO.ID_USUARIO = var_id_usuario) INTO usuario_existe;
-IF (usuario_existe) THEN
-RAISE EXCEPTION 'Usuário de id % não existe.', var_id_usuario;
-END IF;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- FUNÇÃO: curtir uma avaliação
-CREATE OR REPLACE FUNCTION curtir_avaliacao(var_id_usuario INT, var_id_avaliacao INT)
-RETURNS VOID AS $$
-
-BEGIN
-    PERFORM verificar_se_usuario_existe(var_id_usuario);
-    PERFORM verificar_se_avaliacao_existe(var_id_avaliacao);
-
-    INSERT INTO curtida
-    VALUES(default, var_id_usuario, var_id_avaliacao);
-	
-	RAISE NOTICE 'Curtida adicionada.';
-END;
-
-$$ LANGUAGE plpgsql;
-
-
-
-
--- FUNÇÃO: descurtir uma avaliação
-CREATE OR REPLACE FUNCTION descurtir_avaliacao(var_id_usuario INT, var_id_avaliacao INT)
-RETURNS VOID AS $$
-
-BEGIN
-
-    PERFORM verificar_se_usuario_existe(var_id_usuario);
-    PERFORM verificar_se_avaliacao_existe(var_id_avaliacao);
-
-    DELETE FROM curtida
-    WHERE curtida.id_usuario = var_id_usuario and curtida.id_avaliacao = var_id_avaliacao;
-
-    	RAISE NOTICE 'Curtida removida.';
-
-END;
-
-$$ LANGUAGE plpgsql;
-
-
-
-
 -- TRIGGER UPDATE: não é possível atualizar a tabela curtida
 CREATE OR REPLACE FUNCTION bloquear_update_tabela_curtida()
 RETURNS trigger as $$
@@ -74,7 +8,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE TRIGGER trigger_bloquear_update_tabela_curtida
-AFTER UPDATE ON curtida
+BEFORE UPDATE ON curtida
 FOR EACH ROW
 EXECUTE PROCEDURE bloquear_update_tabela_curtida();
 
