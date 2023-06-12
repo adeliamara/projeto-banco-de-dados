@@ -1,39 +1,63 @@
 CREATE ROLE publico;
 -- só tem acesso a algumas views
 
+-- ====================== Acesso a views Publico 
 
+
+-- Conceder permissão para acessar a view vw_avaliacoes
+GRANT SELECT ON vw_avaliacoes TO PUBLICO;
+
+-- Conceder permissão para acessar a função obter_avaliacoes_de_um_livro
+GRANT EXECUTE ON FUNCTION obter_avaliacoes_de_um_livro(INT) TO PUBLICO;
+
+-- Conceder permissão para acessar a view view_livros_autores
+GRANT SELECT ON view_livros_autores TO PUBLICO;
+
+-- Conceder permissão para acessar a view vw_livros_populares
+GRANT SELECT ON vw_livros_populares TO PUBLICO;
+
+-- Conceder permissão para acessar a view view_anuncios_ativos
+GRANT SELECT ON view_anuncios_ativos TO PUBLICO;
+
+-- Conceder permissão para acessar a função get_anuncios_por_id_livro
+GRANT EXECUTE ON FUNCTION get_anuncios_por_id_livro(INT) TO PUBLICO;
+
+
+
+
+-- ============================== Permissoes Autenticado
 
 CREATE ROLE autenticado;
 -- Tabela: anuncio
-GRANT SELECT, UPDATE, DELETE ON anuncio TO autenticado;
+GRANT SELECT, UPDATE, DELETE, INSERT ON anuncio TO autenticado;
 GRANT USAGE, SELECT, UPDATE ON SEQUENCE anuncio_id_anuncio_seq TO autenticado;
 
 -- Tabela: wishlist
-GRANT SELECT, UPDATE, DELETE ON wishlist TO autenticado;
+GRANT SELECT, UPDATE, DELETE, INSERT ON wishlist TO autenticado;
 GRANT USAGE, SELECT, UPDATE ON SEQUENCE wishlist_id_wishlist_seq TO autenticado;
 
 -- Tabela: avaliacao
-GRANT SELECT, UPDATE, DELETE ON avaliacao TO autenticado;
+GRANT SELECT, UPDATE, DELETE, INSERT ON avaliacao TO autenticado;
 GRANT USAGE, SELECT, UPDATE ON SEQUENCE avaliacao_id_avaliacao_seq TO autenticado;
 
 -- Tabela: curtida
-GRANT SELECT, UPDATE, DELETE ON curtida TO autenticado;
+GRANT SELECT, UPDATE, DELETE, INSERT ON curtida TO autenticado;
 GRANT USAGE, SELECT, UPDATE ON SEQUENCE curtida_id_curtidas_seq TO autenticado;
 
 -- Tabela: anuncios_desejados
-GRANT SELECT, UPDATE, DELETE ON anuncios_desejados TO autenticado;
+GRANT SELECT, UPDATE, DELETE, INSERT ON anuncios_desejados TO autenticado;
 GRANT USAGE, SELECT, UPDATE ON SEQUENCE anuncios_desejados_id_anuncios_desejados_seq TO autenticado;
 
 -- Tabela: local_anuncio
-GRANT SELECT, UPDATE, DELETE ON local_anuncio TO autenticado;
+GRANT SELECT, UPDATE, DELETE, INSERT ON local_anuncio TO autenticado;
 GRANT USAGE, SELECT, UPDATE ON SEQUENCE local_anuncio_id_local_anuncio_seq TO autenticado;
 
 -- Tabela: usuario
-GRANT SELECT, UPDATE, DELETE ON usuario TO autenticado;
+GRANT SELECT, UPDATE, DELETE, INSERT ON usuario TO autenticado;
 GRANT USAGE, SELECT, UPDATE ON SEQUENCE usuario_id_usuario_seq TO autenticado;
 
 -- Tabela: localizacao
-GRANT SELECT, UPDATE, DELETE ON localizacao TO autenticado;
+GRANT SELECT, UPDATE, DELETE, INSERT ON localizacao TO autenticado;
 
 
 CREATE ROLE administrador;
@@ -44,19 +68,21 @@ set role autenticado
 
 set role administrador
 
+set role postgres
+
 select  current_user
 
 -- ============================= inserts básicos
-INSERT INTO conservacao VALUES 
-	(1, 'Novo'),
-	(2, 'Seminovo'),
-	(3, 'Com muitas marcas de uso');
+SELECT cadastrar('conservacao', '1', '''Novo''');
+SELECT cadastrar('conservacao', '2', '''Seminovo''');
+SELECT cadastrar('conservacao', '3', '''Com muitas marcas de uso''');
 	
 	
-INSERT INTO tipo_transacao VALUES 
-	(1, 'Apenas venda'),
-	(2, 'Apenas troca'),
-	(3, 'Troca e venda');
+SELECT cadastrar('tipo_transacao', '1', '''Apenas venda''');
+SELECT cadastrar('tipo_transacao', '2', '''Apenas troca''');
+SELECT cadastrar('tipo_transacao', '3', '''Troca e venda''');
+
+
 	
 SELECT * FROM CONSERVACAO
 SELECT * FROM TIPO_TRANSACAO
@@ -111,7 +137,7 @@ SELECT inserir_livro('Um livro com mais de dois autores', 'O livro dos autores',
 
 
 /* TESTE 02: Tentando deletar um autor que está relacionado a um livro */
-SELECT remover_registro('autor', 'id_autor = 6')
+SELECT remover_registro('autor', 'id_autor = 5')
 
 /* TESTE 03: Tentando inserir um título que já existe*/
 SELECT inserir_livro('Jess sente-se um estranho na escola e até mesmo em sua família. Durante todo o verão ele treinou para ser o garoto mais rápido da escola, mas seus planos são ameaçados por Leslie, que vence uma corrida que deveria ser apenas para garotos.', 'Ponte para Terabítia', Array['Katherine Paterson']);
@@ -135,8 +161,8 @@ select * from autor
 select * from autor_livro
 
 select cadastrar('livro', 'default', '''Livro inserido com cadastro''', '''Titulo inserido com cadastro''');
-select cadastrar('autor_livro', '5', '6');
-select cadastrar('autor_livro', '4', '6');
+select cadastrar('autor_livro', '5', '7');
+select cadastrar('autor_livro', '3', '7');
 
 
 
@@ -149,21 +175,21 @@ select * from livro
 
 
 -- Insert: permitido
-SELECT cadastrar('autor_livro', '3', '7');
+SELECT cadastrar('autor_livro', '1', '7');
 
 
 
 -- Updates na tabela autor_livro só são permitidas para o administrador
 /* TESTE 05: Somente a role administrador pode atualizar o autor_livro */
-SELECT atualizar_registro('autor_livro', ARRAY['id_autor = 3'], 'id_autor = 1  and id_livro = 7');
+SELECT atualizar_registro('autor_livro', ARRAY['id_autor = 6'], 'id_autor = 1  and id_livro = 7');
 
 
 
 -- Delete
-/* TESTE 06: Um livro não pode ficar sem autor */
-SELECT remover_registro('autor_livro', 'id_livro = 7 AND id_autor = 8');
-SELECT remover_registro('autor_livro', 'id_livro = 7 AND id_autor = 9');
-SELECT remover_registro('autor_livro', 'id_livro = 7 AND id_autor = 1');
+/* TESTE 06: testando deletar com funcap remover_registro*/
+SELECT remover_registro('autor_livro', 'id_livro = 7 AND id_autor = 5');
+SELECT remover_registro('autor_livro', 'id_livro = 7 AND id_autor = 3');
+SELECT remover_registro('autor_livro', 'id_livro = 7 AND id_autor = 6');
 
 
 
@@ -175,6 +201,7 @@ SELECT * FROM USUARIO
 -- INSERT
 SELECT cadastrar('usuario', 'default', '''kvitorr''', '''123456789''', '''Vitor Araujo''', 'default', '''86999626417''', '''kvitorsantos@hotmail.com''', 'default');
 SELECT cadastrar('usuario', 'default', '''adeliamara''', '''senha123''', '''Adélia Mara''', 'default', '''86999381705''', '''adeliamara13@gmail.com''', 'default');
+SELECT cadastrar('usuario', 'default', '''karlamar''', '''senha345''', '''Karla Maria''', 'default', '''86999111111''', '''karlamar13@gmail.com''', 'default');
 
 
 -- UPDATE
@@ -203,22 +230,23 @@ SELECT * FROM AVALIACAO
 
 -- INSERT
 SELECT cadastrar('avaliacao', 'default', '1', '1', '''Eu adorei o livro''');
-SELECT cadastrar('avaliacao', 'default', '3', '1', '''Eu adorei o livro''');
+SELECT cadastrar('avaliacao', 'default', '1', '2', '''Eu adorei o livro''');
 
 
 /Teste 09: não permitir usuário publicar avaliação duplicada (verificação do conteúdo)/
-SELECT cadastrar('avaliacao', 'default', '1', '1', '''Eu adorei o livro''');
+SELECT cadastrar('avaliacao', 'default', '1', '2', '''Eu adorei o livro''');
 
 -- UPDATE
-SELECT atualizar_registro('avaliacao', ARRAY['conteudo = ''Parabéns ao autor.'''], 'id_avaliacao = 3');
+-- ====== Verifique quais sao as avaliacoes existentes antes de rodar
+SELECT atualizar_registro('avaliacao', ARRAY['conteudo = ''Parabéns ao autor.'''], 'id_avaliacao = 4');
 
 
 -- DELETE 
 /* Teste 10: o delete altera o atributo removido para true ao invés de deletar o registro*/
-SELECT remover_registro('avaliacao', 'id_avaliacao = 1');
+SELECT remover_registro('avaliacao', 'id_avaliacao = 4');
 
 /* Teste 11: Avaliação marcada como removida não pode ser editada*/
-SELECT atualizar_registro('avaliacao', ARRAY['conteudo = ''Paraddasdsa.'''], 'id_avaliacao = 1');
+SELECT atualizar_registro('avaliacao', ARRAY['conteudo = ''Paraddasdsa.'''], 'id_avaliacao = 4');
 
 
 
@@ -230,7 +258,9 @@ SELECT * FROM CURTIDA
 
 -- INSERT (id_curtida, id_usuario, id_avaliacao)
 /* TESTE 12: Quando uma curtida é adicionada, o total de curtidas de avaliação aumentado */
-SELECT cadastrar('curtida', 'default', '1', '7');
+SELECT cadastrar('avaliacao', 'default', '1', '2', '''Livro muito bom!''');
+SELECT cadastrar('curtida', 'default', '2', '7');
+SELECT cadastrar('curtida', 'default', '2', '7');
 
 
 /* TESTE 13: não é possivel um usuário curtir duas vezes a mesma avaliação */
@@ -239,23 +269,29 @@ SELECT cadastrar('curtida', 'default', '1', '7');
 
 -- UPDATE
 /* TESTE 14: não é possível dar update na tabela curtida */
-SELECT atualizar_registro('curtida', ARRAY['id_avaliacao = 7'], 'id_curtidas = 7');
+SELECT atualizar_registro('curtida', ARRAY['id_avaliacao = 1'], 'id_curtidas = 7');
 
 
 -- DELETE
+SELECT * FROM CURTIDA
 
 /* TESTE 15: quando uma curtida é removida, o total de curtida de avaliação diminui */
-SELECT remover_registro('curtida', 'id_curtidas = 7');
+SELECT cadastrar('curtida', 'default', '3', '7');
+
+SELECT remover_registro('curtida', 'id_curtidas = 5');
 
 
 -- Teste 16: Não permitir usuario perigoso inserir avaliacao
-SELECT cadastrar('usuario', 'default', '''karlamaria''', '''senha245''', '''Karla Maria''', 'default', '''86999000000''', '''karliinhahmar@gmail.com''', 'true');
+set role administrador
+SELECT * FROM usuario
 
-SELECT cadastrar('avaliacao', 'default', '1', '3', '''Eu adorei o livro''');
+SELECT cadastrar('usuario', 'default', '''ricardo''', '''senha876''', '''Ricardo Araujo''', 'default', '''86999000000''', '''ricardo@gmail.com''', 'true');
+
+SELECT cadastrar('avaliacao', 'default', '1', '5', '''Eu adorei o livro''');
 
 -- Teste 17: Não permitir usuario perigoso inserir curtida 
 
-SELECT cadastrar('curtida', 'default', '3', '1');
+SELECT cadastrar('curtida', 'default', '5', '1');
 
 -- Teste 18: Não permitir usuario perigoso inserir anuncio 
 
