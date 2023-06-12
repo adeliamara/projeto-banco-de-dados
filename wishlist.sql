@@ -1,5 +1,3 @@
-
------------------ QUANDO ADICIONAR NOVA WISHLIST DEVE ADICIONAR UM NOVO ITEM NO ANUNCIO DESEJADO
 CREATE OR REPLACE FUNCTION verificar_anuncios_para_wishlist() 
 RETURNS TRIGGER AS $$
 BEGIN
@@ -38,52 +36,9 @@ after insert or UPDATE on wishlist
 for each row
 execute procedure verificar_anuncios_para_wishlist(); 
 
-------------------------------
-
-CREATE OR REPLACE FUNCTION cadastrar_wishlist(id_livro INT, id_usuario INT, id_localizacao INT,  valor_maximo REAL, aceita_trocas BOOLEAN)
-RETURNS VOID AS $$
-BEGIN
-    INSERT INTO wishlist
-    VALUES(DEFAULT, id_livro, id_usuario, id_localizacao, valor_maximo, aceita_trocas);
-	RAISE NOTICE 'Wishlist cadastrada!';
-END;
-$$ LANGUAGE plpgsql;
-
-
 
 
 
 -------------------------------
-drop trigger trigger_verificar_anuncios_para_wishlist on wishlist;
-drop function verificar_anuncios_para_wishlist;
 
 
-SELECT cadastrar_wishlist(1,1,1, 20, true);
-SELECT cadastrar_wishlist(1,2,1, 22, false);
-SELECT cadastrar_wishlist(1,1,1, 8, false);
-SELECT cadastrar_wishlist(1,1,1, 8, true);
-
-select * from anuncios_desejados
-
---
-
-CREATE OR REPLACE FUNCTION atualizar_wishlist(
-  p_id_wishlist INT,
-  p_id_livro INT = NULL,
-  p_id_usuario INT = NULL,
-  p_id_localizacao INT = NULL,
-  p_valor_maximo REAL = NULL,
-  p_aceita_trocas BOOLEAN = NULL
-)
-RETURNS VOID AS $$
-BEGIN
-  UPDATE wishlist
-  SET
-    id_livro = COALESCE(p_id_livro, id_livro),
-    id_usuario = COALESCE(p_id_usuario, id_usuario),
-    id_localizacao = COALESCE(p_id_localizacao, id_localizacao),
-    valor_maximo = COALESCE(p_valor_maximo, valor_maximo),
-    aceita_trocas = COALESCE(p_aceita_trocas, aceita_trocas)
-  WHERE id_wishlist = p_id_wishlist;
-END;
-$$ LANGUAGE plpgsql;

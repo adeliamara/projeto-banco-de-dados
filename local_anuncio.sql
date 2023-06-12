@@ -22,16 +22,6 @@ EXECUTE FUNCTION verificar_existencia_local_anuncio();
 
 
 
-CREATE OR REPLACE FUNCTION adicionar_local_para_anuncio(p_id_anuncio INT, p_id_localizacao INT)
-RETURNS VOID AS $$
-BEGIN
-    INSERT INTO local_anuncio (id_localizacao, id_anuncio)
-    VALUES (p_id_localizacao, p_id_anuncio);
-END;
-$$ LANGUAGE plpgsql;
-
-
-
 CREATE OR REPLACE FUNCTION atualizar_local_anuncio(
     p_id_anuncio INT,
     p_local_antigo INT,
@@ -162,22 +152,3 @@ AFTER INSERT OR UPDATE OR DELETE ON local_anuncio
 FOR EACH ROW
 EXECUTE FUNCTION verificar_wishlists_correspondentes_aos_anuncios_com_nova_localizacao();
 
-
-CREATE OR REPLACE FUNCTION check_duplicate_local_anuncio() RETURNS TRIGGER AS $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM local_anuncio
-        WHERE id_local_anuncio <> NEW.id_local_anuncio
-        AND id_anuncio = NEW.id_anuncio
-        AND id_localizacao = NEW.id_localizacao
-    ) THEN
-        RAISE EXCEPTION 'Já existe um par com o mesmo id_anuncio e id_localizacao';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER check_duplicate_local_anuncio_trigger
-BEFORE INSERT OR UPDATE ON local_anuncio
-FOR EACH ROW
-EXECUTE FUNCTION check_duplicate_local_anuncio();

@@ -68,14 +68,14 @@ FOR EACH ROW
 EXECUTE PROCEDURE marcar_como_removido();
 
 
-CREATE OR REPLACE FUNCTION deletar_anuncio(p_id_anuncio INT)
+/*CREATE OR REPLACE FUNCTION deletar_anuncio(p_id_anuncio INT)
 RETURNS VOID AS $$
 BEGIN
     UPDATE anuncio
     SET removido = TRUE
     WHERE id_anuncio = p_id_anuncio;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;*/
 
 CREATE OR REPLACE FUNCTION verificar_wishlists_correspondentes_aos_anuncios()
 RETURNS TRIGGER AS $$
@@ -155,7 +155,7 @@ $$ LANGUAGE plpgsql;
 
 
 
-CREATE OR REPLACE FUNCTION atualizar_anuncio_fechado()
+CREATE OR REPLACE FUNCTION encerrar_anuncio()
   RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.data_finalizacao IS NOT NULL THEN
@@ -165,10 +165,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER atualizacao_anuncio_fechado_trigger
+CREATE TRIGGER atualizacao_encerrar_anuncio_na_anuncio_desejado_trigger
 AFTER UPDATE ON anuncio
 FOR EACH ROW
-EXECUTE FUNCTION atualizar_anuncio_fechado();
+EXECUTE FUNCTION encerrar_anuncio();
 
 
 CREATE OR REPLACE FUNCTION marcar_anuncio_como_fechado(p_id_anuncio INT)
@@ -182,41 +182,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION atualizar_anuncio(
-  p_id_anuncio INT,
-  p_id_livro INT = NULL,
-  p_id_usuario INT = NULL,
-  p_id_conservacao INT = NULL,
-  p_valor REAL = NULL,
-  p_descricao VARCHAR(255) = NULL,
-  p_data_postagem TIMESTAMP = NULL,
-  p_data_finalizacao TIMESTAMP = NULL,
-  p_id_tipo_transacao INT = NULL,
-  p_removido BOOLEAN = NULL
-)
-RETURNS VOID AS $$
-BEGIN
-  UPDATE anuncio
-  SET
-    id_livro = COALESCE(p_id_livro, id_livro),
-    id_usuario = COALESCE(p_id_usuario, id_usuario),
-    id_conservacao = COALESCE(p_id_conservacao, id_conservacao),
-    valor = COALESCE(p_valor, valor),
-    descricao = COALESCE(p_descricao, descricao),
-    data_postagem = COALESCE(p_data_postagem, data_postagem),
-    data_finalizacao = COALESCE(p_data_finalizacao, data_finalizacao),
-    id_tipo_transacao = COALESCE(p_id_tipo_transacao, id_tipo_transacao),
-    removido = COALESCE(p_removido, removido)
-  WHERE id_anuncio = p_id_anuncio;
-END;
-$$ LANGUAGE plpgsql;
 
 
-
-
-
-
-CREATE OR REPLACE FUNCTION verificar_anuncio_removido()
+CREATE OR REPLACE FUNCTION verificar_se_anuncio_foi_removido()
 RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'UPDATE') THEN
@@ -232,4 +200,4 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trigger_verificar_anuncio_removido
 BEFORE UPDATE ON anuncio
 FOR EACH ROW
-EXECUTE FUNCTION verificar_anuncio_removido();
+EXECUTE FUNCTION verificar_se_anuncio_foi_removido();

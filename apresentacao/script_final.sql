@@ -281,7 +281,7 @@ $$ LANGUAGE plpgsql;
 
 -- Criação da trigger para verificar o título existente
 CREATE TRIGGER trigger_verificar_titulo_existente
-BEFORE INSERT OR UPDATE ON livro
+BEFORE INSERT ON livro
 FOR EACH ROW
 EXECUTE FUNCTION verificar_titulo_existente();
 
@@ -463,7 +463,6 @@ EXECUTE FUNCTION verificar_alteracao_comportamento_perigoso();
 
 
 
-
 -- Function: Inserir alerta
 
 CREATE OR REPLACE FUNCTION inserir_alerta(var_id_usuario INT, var_descricao TEXT)
@@ -473,6 +472,17 @@ BEGIN
   VALUES (var_id_usuario, var_descricao);
 
   RAISE NOTICE 'Alerta inserido para o usuário %', var_id_usuario;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Function: Deletar avaliacao
+
+CREATE OR REPLACE FUNCTION deletar_avaliacao_livro(avaliacao_id INT)
+RETURNS VOID AS $$
+BEGIN
+  DELETE FROM avaliacao
+  WHERE id_avaliacao = avaliacao_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -553,8 +563,6 @@ CREATE TRIGGER trigger_verificar_comportamento_perigoso
 AFTER INSERT OR UPDATE ON usuario
 FOR EACH ROW
 EXECUTE FUNCTION verificar_comportamento_perigoso();
-
-
 
 
 
@@ -705,6 +713,496 @@ FOR EACH ROW
 EXECUTE PROCEDURE bloquear_update_tabela_curtida();
 
 
+-- '
+
+-- ======================= Localizacao
+
+CREATE OR REPLACE FUNCTION verificar_localizacao_existente()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM localizacao
+        WHERE municipio = NEW.municipio
+        AND estado = NEW.estado
+    ) THEN
+        RAISE EXCEPTION 'Localização já existe.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_verificar_localizacao_existente
+BEFORE INSERT ON localizacao
+FOR EACH ROW
+EXECUTE FUNCTION verificar_localizacao_existente();
+
+
+-- ========================== Anuncio
+
+CREATE OR REPLACE FUNCTION cadastrar_anuncio_com_localizacoes(
+    p_id_livro INT,
+    p_id_usuario INT,
+    p_id_conservacao INT,
+    p_valor REAL,
+    p_descricao VARCHAR(255),
+    p_id_tipo_transacao INT,
+    p_id_localizacoes INT[]
+)
+RETURNS VOID AS $$
+DECLARE
+    v_anuncio_id INT;
+    v_id_localizacao INT;
+    v_localizacao_exists BOOLEAN;
+BEGIN
+    INSERT INTO anuncio (
+        id_livro,
+        id_usuario,
+        id_conservacao,
+        valor,
+        descricao,
+        id_tipo_transacao
+    )
+    VALUES (
+        p_id_livro,
+        p_id_usuario,
+        p_id_conservacao,
+        p_valor,
+        p_descricao,
+        p_id_tipo_transacao
+    )
+    RETURNING id_anuncio INTO v_anuncio_id;
+
+    FOREACH v_id_localizacao IN ARRAY p_id_localizacoes
+    LOOP
+        SELECT EXISTS (
+            SELECT 1 FROM localizacao
+            WHERE id_localizacao = v_id_localizacao
+        ) INTO v_localizacao_exists;
+
+        IF NOT v_localizacao_exists THEN
+            RAISE EXCEPTION 'A localização com o ID % não existe.', v_id_localizacao;
+        END IF;
+
+        INSERT INTO local_anuncio (id_localizacao, id_anuncio)
+        VALUES (v_id_localizacao, v_anuncio_id);
+    END LOOP;
+
+    RAISE NOTICE 'Anúncio publicado.';
+END;
+$$ LANGUAGE plpgsql;
+   
+
+
+CREATE OR REPLACE FUNCTION marcar_como_removido()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE anuncio
+    SET removido = TRUE
+    WHERE id_anuncio = old.id_anuncio;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_deletar_anuncio
+BEFORE DELETE ON anuncio
+FOR EACH ROW
+EXECUTE PROCEDURE marcar_como_removido();
+
+
+CREATE OR REPLACE FUNCTION verificar_wishlists_correspondentes_aos_anuncios()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_wishlist_exists BOOLEAN;
+    v_wishlist_id INT;
+BEGIN
+ 	IF TG_OP = 'DELETE'  OR TG_OP ='UPDATE' THEN
+        -- Excluir registros na tabela anuncios_desejados ao excluir um anúncio
+        DELETE FROM anuncios_desejados WHERE id_anuncio = OLD.id_anuncio;
+	END IF;
+    IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+        SELECT EXISTS (
+            SELECT 1 FROM wishlist
+            WHERE
+                id_livro = (SELECT id_livro FROM anuncio WHERE id_anuncio = NEW.id_anuncio) AND
+                id_localizacao = ANY(SELECT id_localizacao FROM local_anuncio WHERE id_anuncio = NEW.id_anuncio) AND
+                (
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) in (1,3)AND
+                valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio)) OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 2 AND aceita_trocas = TRUE) OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 3 AND aceita_trocas = TRUE)
+                ) 
+			and     (SELECT removido FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = FALSE
+        ) INTO v_wishlist_exists;
+
+        IF v_wishlist_exists THEN
+            -- Obter o ID da wishlist correspondente
+            INSERT INTO anuncios_desejados (id_anuncio, id_wishlist, anuncio_fechado)
+            SELECT NEW.id_anuncio, id_wishlist, false            
+            FROM wishlist
+             WHERE
+                id_livro = (SELECT id_livro FROM anuncio WHERE id_anuncio = NEW.id_anuncio) AND
+                id_localizacao = ANY(SELECT id_localizacao FROM local_anuncio WHERE id_anuncio = NEW.id_anuncio) AND
+                (
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) in (1,3)AND
+                valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio)) OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 2 AND aceita_trocas = TRUE) OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 3 AND aceita_trocas = TRUE)
+                ) 
+			and     (SELECT removido FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = FALSE;
+        ELSE
+            -- Excluir registros na tabela anuncios_desejados se não correspondem a nenhuma wishlist
+            DELETE FROM anuncios_desejados WHERE id_anuncio = NEW.id_anuncio;
+        END IF;
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_verificar_wishlists_correspondentes_aos_anuncios
+AFTER INSERT OR UPDATE OR DELETE ON anuncio
+FOR EACH ROW
+EXECUTE FUNCTION verificar_wishlists_correspondentes_aos_anuncios();
 
 
 
+-- '
+
+
+CREATE OR REPLACE FUNCTION restaurar_anuncio_removido(var_id_anuncio INT)
+RETURNS VOID AS $$
+DECLARE
+BEGIN
+    UPDATE anuncio SET removido = false
+    WHERE id_anuncio = var_id_anuncio; 
+
+        RAISE NOTICE 'O anúncio  de id % foi restaurado', var_id_anuncio;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION encerrar_anuncio()
+  RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.data_finalizacao IS NOT NULL THEN
+    UPDATE anuncios_desejados SET anuncio_fechado = TRUE WHERE id_anuncio = NEW.id_anuncio;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER atualizacao_encerrar_anuncio_na_anuncio_desejado_trigger
+AFTER UPDATE ON anuncio
+FOR EACH ROW
+EXECUTE FUNCTION encerrar_anuncio();
+
+
+CREATE OR REPLACE FUNCTION marcar_anuncio_como_fechado(p_id_anuncio INT)
+  RETURNS VOID AS $$
+BEGIN
+  UPDATE anuncio
+  SET data_finalizacao = CURRENT_TIMESTAMP
+  WHERE id_anuncio = p_id_anuncio;
+  raise info 'Anúncio fechado %',p_id_anuncio ;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+CREATE OR REPLACE FUNCTION verificar_se_anuncio_foi_removido()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'UPDATE') THEN
+        IF (OLD.removido = true) THEN
+            RAISE EXCEPTION 'Não é permitido fazer update em um anúncio removido.';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_verificar_anuncio_removido
+BEFORE UPDATE ON anuncio
+FOR EACH ROW
+EXECUTE FUNCTION verificar_se_anuncio_foi_removido();
+
+
+
+-- ================ Wishlist
+
+CREATE OR REPLACE FUNCTION verificar_anuncios_para_wishlist() 
+RETURNS TRIGGER AS $$
+BEGIN
+	IF TG_OP = 'UPDATE' THEN
+			DELETE FROM anuncios_desejados
+			WHERE id_wishlist = new.id_wishlist;
+	END IF;
+	IF NEW.aceita_trocas IS TRUE THEN
+			INSERT INTO anuncios_desejados (id_wishlist, id_anuncio, anuncio_fechado)
+			SELECT NEW.id_wishlist, anuncio.id_anuncio, false
+			FROM anuncio
+			LEFT JOIN local_anuncio ON local_anuncio.id_anuncio = anuncio.id_anuncio
+			WHERE 
+			anuncio.id_livro = new.id_livro AND
+			anuncio.data_finalizacao IS NULL AND local_anuncio.id_localizacao = NEW.id_localizacao and
+			((new.valor_maximo >= anuncio.valor and anuncio.id_tipo_transacao != 2) or  anuncio.id_tipo_transacao != 1)	 and removido = false		
+			group by  NEW.id_wishlist, anuncio.id_anuncio;
+	ELSE
+			INSERT INTO anuncios_desejados (id_wishlist, id_anuncio, anuncio_fechado)
+			SELECT NEW.id_wishlist, anuncio.id_anuncio, false
+			FROM anuncio
+			LEFT JOIN local_anuncio ON local_anuncio.id_anuncio = anuncio.id_anuncio
+			WHERE 
+			anuncio.id_livro = new.id_livro AND
+			anuncio.data_finalizacao IS NULL AND
+			NEW.valor_maximo >= anuncio.valor AND anuncio.id_tipo_transacao != 2 and local_anuncio.id_localizacao = NEW.id_localizacao
+			and removido = false
+			group by  NEW.id_wishlist, anuncio.id_anuncio;
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGgER trigger_verificar_anuncios_para_wishlist
+after insert or UPDATE on wishlist
+for each row
+execute procedure verificar_anuncios_para_wishlist(); 
+
+
+-- ============= Local Anuncio
+
+
+
+CREATE OR REPLACE FUNCTION verificar_existencia_local_anuncio()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM local_anuncio
+        WHERE id_anuncio = NEW.id_anuncio
+        AND id_localizacao = NEW.id_localizacao
+    ) THEN
+        RAISE EXCEPTION 'Já existe um registro na tabela local_anuncio para o anúncio e ID de localização especificados.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_verificar_existencia_local_anuncio
+BEFORE UPDATE OR INSERT ON local_anuncio
+FOR EACH ROW
+EXECUTE FUNCTION verificar_existencia_local_anuncio();
+
+
+
+
+CREATE OR REPLACE FUNCTION atualizar_local_anuncio(
+    p_id_anuncio INT,
+    p_local_antigo INT,
+    p_local_novo INT
+)
+RETURNS VOID AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM local_anuncio
+        WHERE id_anuncio = p_id_anuncio
+        AND id_localizacao = p_local_antigo
+    ) THEN
+        RAISE EXCEPTION 'O registro antigo não existe na tabela local_anuncio.';
+    ELSE
+        UPDATE local_anuncio
+        SET id_localizacao = p_local_novo
+        WHERE id_anuncio = p_id_anuncio
+        AND id_localizacao = p_local_antigo;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION impedir_exclusao_todos_locais_anuncio()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_total_locais INT;
+BEGIN
+    SELECT COUNT(*) INTO v_total_locais
+    FROM local_anuncio
+    WHERE id_anuncio = OLD.id_anuncio;
+
+    IF v_total_locais <= 1 THEN
+        RAISE EXCEPTION 'Não é permitido excluir todos os registros da tabela local_anuncio para um anúncio.';
+    END IF;
+
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_impedir_exclusao_todos_locais_anuncio
+BEFORE DELETE ON local_anuncio
+FOR EACH ROW
+EXECUTE FUNCTION impedir_exclusao_todos_locais_anuncio();
+
+
+
+CREATE OR REPLACE FUNCTION remover_localizacao_de_anuncio(p_id_anuncio INT, p_id_localizacao INT)
+RETURNS VOID AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM local_anuncio
+        WHERE id_anuncio = p_id_anuncio
+        AND id_localizacao = p_id_localizacao
+    ) THEN
+        RAISE EXCEPTION 'A localização do anúncio não existe.';
+    ELSE
+        DELETE FROM local_anuncio
+        WHERE id_anuncio = p_id_anuncio
+        AND id_localizacao = p_id_localizacao;
+    END IF;
+            RAISE NOTICE 'A localização de id % foi apagada', p_id_localizacao;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION verificar_wishlists_correspondentes_aos_anuncios_com_nova_localizacao()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_wishlist_exists BOOLEAN;
+    v_wishlist_id INT;
+BEGIN
+
+
+ 	IF TG_OP = 'DELETE'  OR TG_OP ='UPDATE' THEN
+        -- Excluir registros na tabela anuncios_desejados ao excluir um anúncio
+        DELETE FROM anuncios_desejados WHERE id_anuncio = OLD.id_anuncio;
+	END IF;
+    IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+        SELECT EXISTS (
+            SELECT 1 FROM wishlist
+           WHERE
+                id_livro = (SELECT id_livro FROM anuncio WHERE id_anuncio = NEW.id_anuncio) AND
+                (id_localizacao = ANY(SELECT id_localizacao FROM local_anuncio WHERE id_anuncio = NEW.id_anuncio) OR id_localizacao = NEW.id_localizacao) AND
+                (
+                      (((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) in (1,3) AND
+                valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio))AND
+                valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio))OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 2 AND aceita_trocas = TRUE) OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 3 AND aceita_trocas = TRUE)
+                )  and
+				(SELECT removido FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = FALSE
+        ) INTO v_wishlist_exists;
+
+		
+        IF v_wishlist_exists THEN
+
+
+            -- Obter o ID da wishlist correspondente
+            INSERT INTO anuncios_desejados (id_anuncio, id_wishlist, anuncio_fechado)
+            SELECT NEW.id_anuncio, id_wishlist, false
+            FROM wishlist
+            WHERE
+                id_livro = (SELECT id_livro FROM anuncio WHERE id_anuncio = NEW.id_anuncio) AND
+                (id_localizacao = ANY(SELECT id_localizacao FROM local_anuncio WHERE id_anuncio = NEW.id_anuncio) OR id_localizacao = NEW.id_localizacao) AND
+                (
+                      (((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) in (1,3) AND
+                valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio))AND
+                valor_maximo >= (SELECT valor FROM anuncio WHERE id_anuncio = NEW.id_anuncio))OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 2 AND aceita_trocas = TRUE) OR
+                    ((SELECT id_tipo_transacao FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = 3 AND aceita_trocas = TRUE)
+                )  and
+				(SELECT removido FROM anuncio WHERE id_anuncio = NEW.id_anuncio) = FALSE;
+         
+
+        ELSE
+            -- Excluir registros na tabela anuncios_desejados se não correspondem a nenhuma wishlist
+            DELETE FROM anuncios_desejados WHERE id_anuncio = NEW.id_anuncio;
+        END IF;
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_verificar_wishlists_correspondentes_aos_anuncios_com_nova_localizacao
+AFTER INSERT OR UPDATE OR DELETE ON local_anuncio
+FOR EACH ROW
+EXECUTE FUNCTION verificar_wishlists_correspondentes_aos_anuncios_com_nova_localizacao();
+
+
+CREATE OR REPLACE FUNCTION evitar_anuncios_desejados_repetidos()
+RETURNS TRIGGER AS $$
+DECLARE
+    existing_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO existing_count
+    FROM anuncios_desejados
+    WHERE id_anuncio = NEW.id_anuncio
+      AND id_wishlist = NEW.id_wishlist;
+
+    IF existing_count > 0 THEN
+        RETURN NULL;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_evitar_anuncios_desejados_repetidos
+BEFORE INSERT ON anuncios_desejados
+FOR EACH ROW
+EXECUTE FUNCTION evitar_anuncios_desejados_repetidos();
+
+
+
+-- Criação da função que será executada pelo trigger
+CREATE OR REPLACE FUNCTION verificar_autores()
+RETURNS TRIGGER AS $$
+DECLARE
+  total_autores INTEGER;
+BEGIN
+  -- Verifica quantos autores o livro possui
+  SELECT COUNT(*) INTO total_autores
+  FROM autor_livro
+  WHERE id_livro = OLD.id_livro;
+
+  -- Se o livro possuir apenas um autor, impede a remoção
+  IF total_autores = 1 THEN
+    RAISE EXCEPTION 'Não é permitido remover o único autor do livro.';
+  END IF;
+
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Criação do trigger na tabela autor_livro
+CREATE TRIGGER verificar_remocao_autor
+BEFORE DELETE ON autor_livro
+FOR EACH ROW
+EXECUTE FUNCTION verificar_autores();
+
+CREATE OR REPLACE FUNCTION verificar_permissao_update_autor_livro()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'UPDATE' AND current_user <> 'administrador') THEN
+        RAISE EXCEPTION 'Apenas a role "administrador" pode fazer updates na tabela "AUTOR_LIVRO".';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_verificar_permissao_update_autor_livro
+BEFORE UPDATE ON AUTOR_LIVRO
+FOR EACH ROW
+EXECUTE FUNCTION verificar_permissao_update_autor_livro();
