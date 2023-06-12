@@ -496,9 +496,6 @@ DECLARE
    id_avaliacao_temp INT;
    id_anuncio_temp INT;
 BEGIN
-
-
-    IF EXISTS (SELECT 1 FROM USUARIO WHERE comportamento_perigoso = true AND id_usuario = var_id_usuario) THEN
         
         CREATE TEMPORARY TABLE anuncios_encontrados (
             id_anuncios_encontrados INT
@@ -536,9 +533,6 @@ BEGIN
 
         DROP TABLE anuncios_encontrados;
         DROP TABLE avaliacoes_encontradas;
-    ELSE
-        RAISE NOTICE 'O usuário % selecionado não é perigoso', var_id_usuario;
-    END IF;
 
 END;
 $$ LANGUAGE plpgsql;
@@ -553,17 +547,17 @@ BEGIN
     PERFORM inserir_alerta(NEW.id_usuario, 'Comportamento perigoso detectado para o usuário ' || NEW.login);
 
     PERFORM remover_anuncios_avaliacoes_usuario_perigoso(NEW.id_usuario);
-    
+  ELSE 
+          RAISE NOTICE 'O usuário % selecionado não é perigoso', var_id_usuario;
   END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_verificar_comportamento_perigoso
-AFTER INSERT OR UPDATE ON usuario
+BEFORE INSERT OR UPDATE ON usuario
 FOR EACH ROW
 EXECUTE FUNCTION verificar_comportamento_perigoso();
-
 
 
 
