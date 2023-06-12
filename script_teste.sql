@@ -129,6 +129,17 @@ SELECT remover_registro('livro', 'id_livro = 4')
 
 
 
+-- Inserindo livro com funções genéricas
+select * from livro
+select * from autor
+select * from autor_livro
+
+select cadastrar('livro', 'default', '''Livro inserido com cadastro''', '''Titulo inserido com cadastro''');
+select cadastrar('autor_livro', '5', '6');
+select cadastrar('autor_livro', '4', '6');
+
+
+
 
 
 -- ==================================== TABELA autor_livro
